@@ -13,7 +13,8 @@ common_options = [
 
 
 etcd_options = [
-    cfg.PortOpt('port', help='etcd server port number'),
+    cfg.PortOpt('port', help='etcd server port number',
+                default=2379),
     cfg.HostnameOpt('hostname', default='localhost',
                     help='etcd server hostname')
 ]
