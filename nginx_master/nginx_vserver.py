@@ -124,7 +124,7 @@ class NginxVirtualServer:
         if current_contents != contents:
             LOG.debug("contents for path %s changed", path)
             LOG.debug("FROM:\n%s", current_contents)
-            LOG.debug("\n\nTO:\n%s", current_contents)
+            LOG.debug("\n\nTO:\n%s", contents)
 
             with open(path, 'w') as f:
                 f.write(contents)
@@ -154,3 +154,4 @@ class NginxVirtualServer:
 
         if changed:
             self.reload()
+        return changed

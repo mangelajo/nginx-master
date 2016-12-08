@@ -11,13 +11,6 @@ from nginx_vserver import NginxVirtualServer
 
 LOG = logging.getLogger(__name__)
 
-
-# Oslo Logging uses INFO as default
-LOG.info("Oslo Logging")
-LOG.warning("Oslo Logging")
-LOG.error("Oslo Logging")
-
-
 def setup():
     logging.register_options(cfg.CONF)
     config.setup()
@@ -40,7 +33,11 @@ def main_loop():
 
             LOG.debug("domain_name %s", domain_name)
 
-            backends = client.get(server_path.key + "/backends")
+            try:
+                backends = client.get(server_path.key + "/backends")
+            except etcd.EtcdKeyNotFound:
+                LOG.error("No backends found for server %s", domain_name)
+
             for backend in backends.children:
                 LOG.debug("found backend %s with value: %s", backend.key,
                           backend.value)
@@ -52,6 +49,7 @@ def main_loop():
 
                 server_backends.append(value)
 
+            if server_backends:
                 virtual_server = NginxVirtualServer(domain_name, server_backends)
                 virtual_server.write_config()
 
@@ -60,7 +58,11 @@ def main_loop():
                         if not virtual_server.create_certificate():
                             failed[domain_name] = True
                         else:
-                            virtual_server.write_config()
+                            if virtual_server.write_config():
+                                LOG.info("Config file updated for server %s"
+                                         " with backends: %s", domain_name,
+                                         server_backends)
+
                     else:
                         LOG.error("%s in failed state, ignoring for now!",
                                   domain_name)
