@@ -1,8 +1,13 @@
 # -*- coding: utf-8 -*-
-from oslo_config import cfg
-import jinja2
 import os.path
 import os
+
+
+from oslo_config import cfg
+import jinja2
+from oslo_log import log as logging
+
+LOG = logging.getLogger(__name__)
 
 CONF_PREFIX = 'auto-'
 CONFD_DIR = '/etc/nginx/conf.d/auto-'
@@ -115,10 +120,18 @@ class NginxVirtualServer:
         current_contents = None
         if os.path.isfile(path):
             current_contents = open(path, 'r').read()
+
         if current_contents != contents:
+            LOG.debug("contents for path %s changed", path)
+            LOG.debug("FROM:\n%s", current_contents)
+            LOG.debug("\n\nTO:\n%s", current_contents)
+
             with open(path, 'w') as f:
                 f.write(contents)
             return True
+        else:
+            LOG.debug("contents for path %s didn't change", path)
+
         return False
 
     @property
