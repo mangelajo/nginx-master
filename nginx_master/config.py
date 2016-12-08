@@ -14,12 +14,12 @@ common_options = [
 etcd_options = [
     cfg.PortOpt('port', help='etcd server port number'),
     cfg.HostnameOpt('hostname', default='localhost',
-                         help='etcd server hostname')
+                    help='etcd server hostname')
 ]
 
 letsencrypt_options = [
     cfg.StrOpt('email', help='The Letsencrypt account for your '
-                               'certificates'),
+                             'certificates'),
     cfg.StrOpt('cert_path', default='/etc/letsencrypt/live/')
 ]
 
@@ -30,7 +30,7 @@ nginx_options = [
 def reset():
     cfg.CONF.reset()
 
-def setup(disable_args=False):
+def setup():
     cfg.CONF.register_opts(common_options)
     cfg.CONF.register_opts(letsencrypt_options, group='letsencrypt')
     cfg.CONF.register_opts(nginx_options, group='nginx')
