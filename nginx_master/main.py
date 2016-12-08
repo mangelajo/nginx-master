@@ -24,7 +24,7 @@ def setup():
     logging.setup(cfg.CONF, "nginx-master")
 
 def main_loop():
-    client = etcd.Client(port=cfg.etcd.port)
+    client = etcd.Client(port=cfg.CONF.etcd.port)
     failed = {}
 
     while True:
