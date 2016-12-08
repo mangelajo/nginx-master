@@ -1,3 +1,6 @@
 certbot
 ovh
-etcd
+python-etcd
+oslo.config
+oslo.log
+simplejson
