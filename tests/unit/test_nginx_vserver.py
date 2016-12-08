@@ -13,7 +13,8 @@ TEST_BACKENDS = ['192.168.1.1:80', '192.168.1.2:80']
 TEST_PATH = '/path/myfile.txt'
 TEST_CONTENT = 'this_is_a_test_content'
 
-TEST_CONF_OUTPUT_NOCERT = """upstream test-es {
+TEST_CONF_OUTPUT_NOCERT = """
+upstream test-es {
 	 server 192.168.1.1:80; server 192.168.1.2:80;
 }
 
@@ -24,8 +25,8 @@ server {
     error_log /var/log/nginx/test.es.access.log;
     location ^~ /.well-known/acme-challenge/ {
             default_type "text/plain";
-	        root /var/www/test.es/;
-  	        allow all;
+            root /var/www/test.es/;
+            allow all;
             auth_basic off;
     }
 
@@ -64,12 +65,13 @@ server {
 
     location / {
             proxy_pass http://test-es;
-  	        proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504;
-     	    proxy_redirect off;
+            proxy_next_upstream error timeout invalid_header http_500 http_502
+                                http_503 http_504;
+            proxy_redirect off;
             proxy_buffering off;
-     	    proxy_set_header        Host            $host;
-     	    proxy_set_header        X-Real-IP       $remote_addr;
-     	    proxy_set_header        X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header Host            $host;
+            proxy_set_header X-Real-IP       $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     }
 }
 """)

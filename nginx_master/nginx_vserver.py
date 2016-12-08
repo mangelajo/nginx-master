@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from oslo_config import cfg
 import jinja2
 import os.path
@@ -6,15 +7,73 @@ import os
 CONF_PREFIX = 'auto-'
 CONFD_DIR = '/etc/nginx/conf.d/auto-'
 
+CONFIG_TEMPLATE = jinja2.Template(u"""
+upstream {{ server.name | replace('.', '-') }} {
+	{% for backend in server.backends %} server {{ backend }};{% endfor %}
+}
+
+server {
+    listen 80;
+    server_name {{ server.name }};
+    access_log /var/log/nginx/{{ server.name }}.access.log combined;
+    error_log /var/log/nginx/{{ server.name }}.access.log;
+    location ^~ /.well-known/acme-challenge/ {
+            default_type "text/plain";
+            root /var/www/{{ server.name }}/;
+            allow all;
+            auth_basic off;
+    }
+
+    location / {
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_pass http://{{ server.name | replace('.', '-') }};
+            proxy_set_header Authorization "";
+    }
+}
+
+{% if server.ssl %}
+server {
+    # listen 443 ssl;
+    listen 443 ssl http2;
+
+    server_name {{ server.name }};
+
+    ssl_certificate /etc/letsencrypt/live/{{ server.name }}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/{{ server.name }}/privkey.pem;
+
+    ssl_stapling on;
+    ssl_stapling_verify on;
+    {% if server.strict_ssl %}add_header Strict-Transport-Security "max-age=31536000";{% endif %}
+
+    access_log /var/log/nginx/{{ server.name }}.https.log combined;
+
+    # maintain the .well-known directory alias for renewals
+    location ^~ /.well-known {
+        alias /var/www/{{ server.name }}/.well-known;
+    }
+
+    location / {
+            proxy_pass http://{{ server.name | replace('.', '-') }};
+            proxy_next_upstream error timeout invalid_header http_500 http_502
+                                http_503 http_504;
+            proxy_redirect off;
+            proxy_buffering off;
+            proxy_set_header Host            $host;
+            proxy_set_header X-Real-IP       $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+}
+{% endif %}""")
+
+
 
 class NginxVirtualServer:
     def __init__(self, domain_name, backends):
         self._domain_name = domain_name
         self._backends = backends
         self._id = domain_name.replace('.', '-')
-        self._conf_template = jinja2.Environment(
-            loader=jinja2.FileSystemLoader([os.path.dirname(__file__)])
-            ).get_template('nginx-server.conf.j2')
 
     @property
     def has_cert(self):
@@ -72,7 +131,7 @@ class NginxVirtualServer:
                   'strict_ssl': strict_ssl,
                   'backends': self._backends}
 
-        result_conf = self._conf_template.render(
+        result_conf = CONFIG_TEMPLATE.render(
             server=server
             ).encode('utf-8')
 
