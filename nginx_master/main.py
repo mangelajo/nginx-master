@@ -19,8 +19,8 @@ LOG.error("Oslo Logging")
 
 
 def setup():
-    config.setup()
     logging.register_options(cfg.CONF)
+    config.setup()
     logging.setup(cfg.CONF, "nginx-master")
 
 def main_loop():
