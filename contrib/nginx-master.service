@@ -1,0 +1,12 @@
+[Unit]
+Description=nginx-master, a reverse proxy manager
+After=syslog.target network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/nginx-master --config-file /etc/nginx-master/nginx-master.conf --log-file /var/log/nginx-master.log -v
+User=root
+KillMode=process
+
+[Install]
+WantedBy=multi-user.target
