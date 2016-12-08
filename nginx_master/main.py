@@ -66,7 +66,9 @@ def main_loop():
                                   domain_name)
         time.sleep(cfg.CONF.loop_interval)
 
-
-if __name__ == '__main__':
+def main():
     setup()
     main_loop()
+
+if __name__ == '__main__':
+    main()

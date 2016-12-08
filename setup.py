@@ -66,7 +66,7 @@ setup(
 
     entry_points={
         'console_scripts': [
-            'nginx-master=nginx_master.main:main_loop',
+            'nginx-master=nginx_master.main:main',
         ],
     },
 )
