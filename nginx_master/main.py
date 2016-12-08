@@ -1,6 +1,7 @@
 #!/usr/bin/python
 import etcd
 from oslo_config import cfg
+from oslo_log import log as logging
 import time
 
 import config
@@ -8,9 +9,21 @@ import dns_manager
 from nginx_vserver import NginxVirtualServer
 
 
-def main():
-    config.setup()
+LOG = logging.getLogger(__name__)
 
+
+# Oslo Logging uses INFO as default
+LOG.info("Oslo Logging")
+LOG.warning("Oslo Logging")
+LOG.error("Oslo Logging")
+
+
+def setup():
+    config.setup()
+    logging.register_options(cfg.CONF)
+    logging.setup(cfg.CONF, "nginx-master")
+
+def main_loop():
     client = etcd.Client(port=cfg.etcd.port)
     failed = {}
 
@@ -25,14 +38,16 @@ def main():
 
             server_backends = []
 
-            print domain_name, ':'
+            LOG.debug("domain_name %s", domain_name)
+
             backends = client.get(server_path.key + "/backends")
             for backend in backends.children:
-                print '   -', backend.key, ':', backend.value
+                LOG.debug("found backend %s with value: %s", backend.key,
+                          backend.value)
 
                 value = backend.value.split('\n')[0]
 
-                if not value.endswith(':80'):
+                if ':' not in value:
                     value += u':80'
 
                 server_backends.append(value)
@@ -47,5 +62,11 @@ def main():
                         else:
                             virtual_server.write_config()
                     else:
-                        print domain_name, "in failed state, ignoring for now!"
-        time.sleep(5)
+                        LOG.error("%s in failed state, ignoring for now!",
+                                  domain_name)
+        time.sleep(cfg.CONF.loop_interval)
+
+
+if __name__ == '__main__':
+    setup()
+    main_loop()

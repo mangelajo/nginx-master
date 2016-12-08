@@ -7,7 +7,8 @@ import dns_manager
 
 common_options = [
     cfg.StrOpt('dns_reg_type', default=dns_manager.A),
-    cfg.StrOpt('dns_value', help='The value to use for the DNS settings')
+    cfg.StrOpt('dns_value', help='The value to use for the DNS settings'),
+    cfg.IntOpt('loop_interval', default=5, help='Interval between loops')
 ]
 
 
