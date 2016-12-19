@@ -19,9 +19,12 @@ UPDATED = 'updated'
 CREATED = 'created'
 
 
-def resolve(name, reg_type=A):
+class DomainNotFound(Exception):
+    pass
+
+def resolve(name, reg_type=A, nameservers=['8.8.8.8', '8.8.4.4']):
     _resolver = resolver.Resolver()
-    _resolver.nameservers = ['8.8.8.8', '8.8.4.4']
+    _resolver.nameservers = nameservers
     return list(_resolver.query(name, reg_type))
 
 
@@ -33,13 +36,14 @@ class Domain:
     @property
     def records(self):
         records = {}
-
-        for record_id in self._client.get(
-                '/domain/zone/{}/record'.format(self._domain)):
-            info = self._client.get('/domain/zone/{}/record/{}'.format(
-                self._domain, record_id))
-            records[(info['subDomain'], info['fieldType'])] = info
-
+        try:
+            for record_id in self._client.get(
+                    '/domain/zone/{}/record'.format(self._domain)):
+                info = self._client.get('/domain/zone/{}/record/{}'.format(
+                    self._domain, record_id))
+                records[(info['subDomain'], info['fieldType'])] = info
+        except ovh.exceptions.ResourceNotFoundError:
+            raise DomainNotFound()
         return records
 
     def set_record(self, name, rec_type, value):

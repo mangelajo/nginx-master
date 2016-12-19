@@ -4,3 +4,4 @@ python-etcd
 oslo.config
 oslo.log
 simplejson
+eventlet

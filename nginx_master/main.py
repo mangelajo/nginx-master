@@ -1,20 +1,25 @@
 #!/usr/bin/python
 import etcd
+import eventlet
 from oslo_config import cfg
 from oslo_log import log as logging
 import time
 
 import config
-import dns_manager
 from nginx_vserver import NginxVirtualServer
+from flows import domain
 
 
 LOG = logging.getLogger(__name__)
+threads = {}
+
 
 def setup():
+    eventlet.monkey_patch()
     logging.register_options(cfg.CONF)
     config.setup()
     logging.setup(cfg.CONF, "nginx-master")
+
 
 def main_loop():
     client = etcd.Client(port=cfg.CONF.etcd.port)
@@ -48,6 +53,17 @@ def main_loop():
                     value += u':80'
 
                 server_backends.append(value)
+
+            if domain_name in threads:
+                domain_thread = threads[domain_name]
+                domain_thread.set_backends(server_backends)
+            else:
+                LOG.info("Creating DomainFlow(%s)", domain_name)
+                domain_thread = domain.DomainFlow(domain_name)
+                domain_thread.set_backends(server_backends)
+                threads[domain_name] = domain_thread
+                domain_thread.run()
+
 
             if server_backends:
                 virtual_server = NginxVirtualServer(domain_name, server_backends)

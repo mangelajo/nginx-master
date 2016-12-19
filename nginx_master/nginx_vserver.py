@@ -82,12 +82,25 @@ class NginxVirtualServer:
         self._backends = backends
         self._id = domain_name.replace('.', '-')
 
+    def set_backends(self, backends):
+        self._backends = backends
+
     @property
-    def has_cert(self):
+    def cert_path(self):
         domain_dir = os.path.join(cfg.CONF.letsencrypt.cert_path,
                                   self._domain_name)
-        return os.path.isfile(os.path.join(domain_dir, 'fullchain.pem')) and \
-               os.path.isfile(os.path.join(domain_dir, 'privkey.pem'))
+        return os.path.join(domain_dir, 'fullchain.pem')
+
+    @property
+    def key_path(self):
+        domain_dir = os.path.join(cfg.CONF.letsencrypt.cert_path,
+                                  self._domain_name)
+        return os.path.join(domain_dir, 'privkey.pem')
+
+    @property
+    def has_cert(self):
+        return os.path.isfile(self.cert_path) and \
+               os.path.isfile(self.key_path)
 
     @staticmethod
     def _ensure_directory(path):
