@@ -7,8 +7,16 @@ import dns_manager
 
 common_options = [
     cfg.StrOpt('dns_reg_type', default=dns_manager.A),
-    cfg.StrOpt('dns_reg_value', help='The value to use for the DNS settings'),
-    cfg.IntOpt('loop_interval', default=5, help='Interval between loops')
+    cfg.StrOpt('dns_reg_value',
+               help='The value to use for the DNS settings, you can use $stun '
+                    'to fetch your external IP address via stun and keep it '
+                    'updated'),
+    cfg.IntOpt('dns_reg_ttl', default=900, help='TTL for the record'),
+    cfg.StrOpt('dns_spf', default="v=spf1 a:cpanel.optimizacionweb.es -all"),
+    cfg.IntOpt('dns_spf_ttl', default=900, help='TTL for the SPF record'),
+    cfg.IntOpt('loop_interval', default=5, help='Interval between loops'),
+    cfg.StrOpt('dns_dmarc', default="v=DMARC1;p=reject;pct=100;"
+                                     "rua=mailto:miguelangel@ajo.es")
 ]
 
 

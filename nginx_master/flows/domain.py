@@ -6,6 +6,7 @@ from oslo_log import log as logging
 from nginx_master import dns_manager
 from nginx_master.flows import base
 from nginx_master.nginx_vserver import NginxVirtualServer
+from nginx_master import postfix
 
 LOG = logging.getLogger(__name__)
 
@@ -17,6 +18,8 @@ class DomainFlow(base.Flow):
         self.next(self.write_config)
         self.backends = []
         self.nginx_vserver = NginxVirtualServer(domain_name, [])
+        self.dkim_key = postfix.DKIMKey(domain_name)
+        self.dns_api = dns_manager.Domain(self.domain_name)
 
     def set_backends(self, backends):
         self.backends = backends
@@ -28,9 +31,9 @@ class DomainFlow(base.Flow):
         self.next(self.check_dns)
 
     def check_dns(self):
-        dns_man = dns_manager.Domain(self.domain_name)
+
         try:
-            records = dns_man.records
+            records = self.dns_api.records
         except dns_manager.DomainNotFound:
             LOG.error("Your domain (%s) is not registered in the OVH api, "
                       "please go to "
@@ -38,18 +41,44 @@ class DomainFlow(base.Flow):
                       self.domain_name)
             self.next(self.check_dns)
             return self.wait(60 * 10)
-        if True:
+        key, entry_type, value = self.dkim_key.dns_entry
+        LOG.debug("%s DNS API records: %s", self.domain_name, records)
+        if (cfg.CONF.dns_reg_type, cfg.CONF.dns_reg_value) in records and \
+                (key, value) in records:
+            LOG.debug("dns records for %s already set, waiting for dns to be "
+                      "ready", self.domain_name)
             self.next(self.wait_dns)
         else:
+            self.records = records
             self.next(self.set_dns)
 
     def set_dns(self):
+
+        self.dns_api.set_record('',
+                                cfg.CONF.dns_reg_type,
+                                cfg.CONF.dns_reg_value,
+                                cfg.CONF.dns_reg_ttl)
+
+        # setup the DKIM email signature key
+        dkim_key, dkim_type, dkim_value = self.dkim_key.dns_entry
+        self.dns_api.set_record(dkim_key, dkim_type, dkim_value)
+
+        # setup the SPF entry if configured
+        if cfg.CONF.dns_spf:
+            self.dns_api.set_record('', dns_manager.SPF,
+                                    cfg.CONF.dns_spf,
+                                    cfg.CONF.dns_spf_ttl)
+        # setup the DMARC entry if configured
+        if cfg.CONF.dns_dmarc:
+            self.dns_api.set_record('_dmarc', dns_manager.TXT,
+                                    cfg.CONF.dns_dmarc)
+
         self.next(self.wait_dns)
 
     def wait_dns(self):
         try:
             values = dns_manager.resolve(self.domain_name, cfg.CONF.dns_reg_type)
-            if len(values)==1 and str(values[0]) == cfg.CONF.dns_reg_value:
+            if len(values) == 1 and str(values[0]) == cfg.CONF.dns_reg_value:
                 LOG.info("DNS for %s is correctly set", self.domain_name)
                 if not self.nginx_vserver.has_cert:
                     return self.next(self.grab_cert)

@@ -1,6 +1,10 @@
 import ovh
 from dns import resolver
 
+from oslo_log import log as logging
+
+LOG = logging.getLogger(__name__)
+
 A = 'A'
 CNAME = 'CNAME'
 AAAA = 'AAAA'
@@ -15,6 +19,7 @@ SRV = 'SRV'
 SSHFP = 'SSHFP'
 TXT = 'TXT'
 
+NOTCHANGED = 'notchanged'
 UPDATED = 'updated'
 CREATED = 'created'
 
@@ -46,15 +51,28 @@ class Domain:
             raise DomainNotFound()
         return records
 
-    def set_record(self, name, rec_type, value):
+    def set_record(self, name, rec_type, value, ttl=3600):
+        ttl = int(ttl)
         records = self.records
+
         if (name, rec_type) in records:
+            record = records[(name, rec_type)]
+            if rec_type == SPF:
+                record['target'] = record['target'].strip('"')
+            if record['target'] == value and record['ttl'] == ttl:
+                LOG.info('DNS record %s.%s (%s) as "%s" (ttl=%d) was already'
+                         ' set', name, self._domain, rec_type, value, ttl)
+                return NOTCHANGED
+            LOG.info('Updating record %s.%s (%s) to "%s" (ttl=%d)', name,
+                     self._domain, rec_type, value, ttl)
             self._update_record(records[(name, rec_type)]['id'], name,
-                                rec_type, value)
+                                rec_type, value, ttl)
             return UPDATED
 
         else:
-            self._create_record(name, rec_type, value)
+            LOG.info('Creating record %s.%s (%s) as "%s" (ttl=%d)', name,
+                     self._domain, rec_type, value, ttl)
+            self._create_record(name, rec_type, value, ttl)
             return CREATED
 
     def del_record(self, name, rec_type):
@@ -66,15 +84,15 @@ class Domain:
             return True
         return False
 
-
-    def _update_record(self, rec_id, name, rec_type, value):
+    def _update_record(self, rec_id, name, rec_type, value, ttl=3600):
         self._client.delete('/domain/zone/{}/record/{}'.format(self._domain,
                                                                rec_id))
-        self._create_record(name, rec_type, value)
+        self._create_record(name, rec_type, value, ttl)
 
-    def _create_record(self, name, rec_type, value):
+    def _create_record(self, name, rec_type, value, ttl=3600):
         self._client.post('/domain/zone/{}/record'.format(self._domain),
-                          fieldType=rec_type, subDomain=name, target=value)
+                          fieldType=rec_type, subDomain=name, target=value,
+                          ttl=ttl)
         self._refresh()
 
     def _refresh(self):
