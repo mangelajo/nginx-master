@@ -10,6 +10,7 @@ class Flow(object):
         self.parameter_list = []
         self.parameters_dict = {}
         self.next_task = 'noop'
+        self._next_on_wait = None
         self.id = id
         self._must_stop = False
 
@@ -42,6 +43,11 @@ class Flow(object):
         self.parameters_dict = parameters_dict
         self.next_task = function.__name__
 
+    def next_on_wait(self, function, *parameter_list, **parameters_dict):
+        self.parameter_list_w = parameter_list
+        self.parameters_dict_w = parameters_dict
+        self._next_on_wait = function.__name__
+
     def run(self):
         eventlet.spawn_n(self._run)
 
@@ -55,6 +61,15 @@ class Flow(object):
                 while result > 0 and not self._must_stop:
                     eventlet.sleep(1)
                     result -= 1
+                    if self._next_on_wait:
+                        self.next_task = self._next_on_wait
+                        self.parameter_list = self.parameter_list_w
+                        self.parameter_dict = self.parameter_dict_w
+                        LOG.debug("%s(%s) jumping to task %s",
+                                  self.__class__.__name__, self.id,
+                                  self._next_on_wait)
+                        self._next_on_wait = None
+                        break
         LOG.debug("%s(%s) stopped.", self.__class__.__name__, self.id)
 
     def wait(self, seconds):

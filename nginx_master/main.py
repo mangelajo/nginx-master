@@ -1,9 +1,11 @@
 #!/usr/bin/python
+import time
+
 import etcd
 import eventlet
 from oslo_config import cfg
 from oslo_log import log as logging
-import time
+import stun
 
 import config
 from nginx_vserver import NginxVirtualServer
@@ -12,6 +14,30 @@ from flows import domain
 
 LOG = logging.getLogger(__name__)
 threads = {}
+
+ip_address = None
+_last_ip_address_check = 0
+
+
+def update_ip_address_via_stun():
+    global ip_address, _last_ip_address_check
+    now = time.time()
+
+    if now - _last_ip_address_check < cfg.CONF.stun.check_interval:
+        return False
+
+    if cfg.CONF.stun.host:
+        LOG.debug("Checking external IP address with stun server")
+        _, ext_ip, _ = stun.get_ip_info(stun_host=cfg.CONF.stun.host,
+                                        stun_port=cfg.CONF.stun.port)
+        _last_ip_address_check = now
+
+    if not ext_ip:
+        return False
+
+    changed = ip_address != ext_ip
+    ip_address = ext_ip
+    return changed
 
 
 def setup():
@@ -22,8 +48,13 @@ def setup():
 
 
 def main_loop():
+    global ip_address
     client = etcd.Client(port=cfg.CONF.etcd.port)
     failed = {}
+
+    update_ip_address_via_stun()
+
+    LOG.info('STUN resolved ip address: %s', ip_address)
 
     while True:
         try:
@@ -59,11 +90,10 @@ def main_loop():
                 domain_thread.set_backends(server_backends)
             else:
                 LOG.info("Creating DomainFlow(%s)", domain_name)
-                domain_thread = domain.DomainFlow(domain_name)
+                domain_thread = domain.DomainFlow(domain_name, ip_address)
                 domain_thread.set_backends(server_backends)
                 threads[domain_name] = domain_thread
                 domain_thread.run()
-
 
             if server_backends:
                 virtual_server = NginxVirtualServer(domain_name, server_backends)
@@ -83,6 +113,10 @@ def main_loop():
                         LOG.error("%s in failed state, ignoring for now!",
                                   domain_name)
         time.sleep(cfg.CONF.loop_interval)
+
+        if update_ip_address_via_stun():
+            for thread in threads.values():
+                thread.event_ip_changed(ip_address)
 
 def main():
     setup()

@@ -42,6 +42,8 @@ class Domain:
     def records(self):
         records = {}
         try:
+            #TODO(mangelajo): This can, of course, be improved because this
+            #                 won't handle several entries of the same type
             for record_id in self._client.get(
                     '/domain/zone/{}/record'.format(self._domain)):
                 info = self._client.get('/domain/zone/{}/record/{}'.format(

@@ -8,11 +8,13 @@ import dns_manager
 common_options = [
     cfg.StrOpt('dns_reg_type', default=dns_manager.A),
     cfg.StrOpt('dns_reg_value',
-               help='The value to use for the DNS settings, you can use $stun '
+               help='The value to use for the DNS settings, you can use '
+                    '$ip_address '
                     'to fetch your external IP address via stun and keep it '
                     'updated'),
     cfg.IntOpt('dns_reg_ttl', default=900, help='TTL for the record'),
     cfg.StrOpt('dns_spf', default="v=spf1 a:cpanel.optimizacionweb.es -all"),
+    cfg.StrOpt('dns_mx', default="1 redirect.ovh.net."),
     cfg.IntOpt('dns_spf_ttl', default=900, help='TTL for the SPF record'),
     cfg.IntOpt('loop_interval', default=5, help='Interval between loops'),
     cfg.StrOpt('dns_dmarc', default="v=DMARC1;p=reject;pct=100;"
@@ -37,6 +39,12 @@ nginx_options = [
     cfg.StrOpt('confd_path', default='/etc/nginx/conf.d/'),
 ]
 
+stun_options = [
+    cfg.StrOpt('host', default='stun.l.google.com'),
+    cfg.PortOpt('port', default=19302),
+    cfg.IntOpt('check_interval', default=60)
+]
+
 def reset():
     cfg.CONF.reset()
 
@@ -45,4 +53,5 @@ def setup():
     cfg.CONF.register_opts(letsencrypt_options, group='letsencrypt')
     cfg.CONF.register_opts(nginx_options, group='nginx')
     cfg.CONF.register_opts(etcd_options, group='etcd')
+    cfg.CONF.register_opts(stun_options, group='stun')
     cfg.CONF()

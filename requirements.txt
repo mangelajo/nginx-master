@@ -5,3 +5,4 @@ oslo.config
 oslo.log
 simplejson
 eventlet
+pystun
