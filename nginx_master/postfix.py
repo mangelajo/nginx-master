@@ -6,8 +6,12 @@
 import os
 import re
 
-
 DKIM_KEY_CMD = "opendkim-genkey -b 2048 -h rsa-sha256 -r -s default -d %s"
+DKIM_KEYTABLE = "/etc/opendkim/KeyTable"
+DKIM_KEYTABLE_ENTRY = "default._domainkey.%(domain)s %(domain)s:default:" \
+                      "/etc/opendkim/keys/%(domain)s/default.private"
+DKIM_SIGNINGTABLE = "/etc/opendkim/SigningTable"
+DKIM_SIGNINGTABLE_ENTRY = "*@%(domain)s default._domainkey.%(domain)s"
 
 DKIM_KEY_DIR = "/etc/opendkim/keys/%s"
 DKIM_KEY_PATH = DKIM_KEY_DIR + "/default.private"
@@ -18,6 +22,41 @@ class DKIMKey(object):
     def __init__(self, domain_name):
         self._domain = domain_name
         self._ensure_dir(self.key_dir)
+
+    @staticmethod
+    def _ensure_line(filename, line):
+        lines = open(filename, 'r').readlines()
+        for _line in lines:
+            _line = _line.rstrip()
+            if _line == line:
+                return False
+
+        with open(filename, 'a') as f:
+            f.write(line + '\n')
+
+        return True
+
+    def _ensure_config(self):
+        data = {'domain': self._domain}
+        signing_entry = DKIM_SIGNINGTABLE_ENTRY % data
+        keytable_entry = DKIM_KEYTABLE_ENTRY % data
+        changed = (self._ensure_line(DKIM_SIGNINGTABLE, signing_entry) or
+                   self._ensure_line(DKIM_KEYTABLE, keytable_entry))
+        if changed:
+            self.reload()
+
+    @staticmethod
+    def _ctl(action='reload'):
+        os.system('service opendkim %s' % action)
+
+    @classmethod
+    def reload(cls):
+        cls._ctl('reload')
+
+    @classmethod
+    def restart(cls):
+        cls._ctl('restart')
+
 
     @property
     def key_dir(self):
@@ -43,6 +82,8 @@ class DKIMKey(object):
     def dns_entry(self):
         if not os.path.exists(self.dns_path):
             self._generate_key()
+
+        self._ensure_config()
 
         with open(self.dns_path, 'r') as f:
             data = f.read()
