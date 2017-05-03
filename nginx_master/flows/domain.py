@@ -121,5 +121,20 @@ class DomainFlow(base.Flow):
         return self.wait(60*10)
 
     def wait_renewal(self):
-        self.next(self.wait_renewal)
+        if self.nginx_vserver.needs_cert_renewal:
+            self.next(self.renew_cert)
+        else:
+            self.next(self.wait_renewal)
+            return self.wait(60*10)
+
+    def renew_cert(self):
+        if self.nginx_vserver.create_certificate(renew=True):
+            self.next(self.wait_renewal)
+        else:
+            self.next(self.wait_renewal_retry)
+
+    def wait_renewal_retry(self):
+        LOG.error("Certificate renewal failed for %s, waiting 10 minutes",
+                  self.domain_name)
+        self.next(self.renew_cert)
         return self.wait(60*10)

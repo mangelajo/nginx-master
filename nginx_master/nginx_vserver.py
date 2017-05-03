@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import datetime
 import os.path
 import os
 
@@ -103,18 +104,36 @@ class NginxVirtualServer:
                os.path.isfile(self.key_path)
 
     @staticmethod
+    def _file_age_days(filename):
+        mtime = datetime.datetime.fromtimestamp(os.path.getmtime(filename))
+        delta = datetime.now() - mtime
+        return delta.days
+
+    @property
+    def needs_cert_renewal(self):
+        if self._file_age_days(self.cert_path) >= 60:
+            LOG.info("%s needs renewal (>60 days old)", self.cert_path)
+            return True
+
+    @staticmethod
     def _ensure_directory(path):
         if not os.path.exists(path):
             os.makedirs(path)
 
-    def create_certificate(self):
+    def create_certificate(self, renew=False):
+
+        action = 'renew' if renew else 'certonly'
+
         static_path = "/var/www/%s" % self._domain_name
 
         self._ensure_directory(static_path)
 
-        return os.system("certbot certonly --webroot -w %s " % static_path +
+        return os.system("certbot %s --webroot -w %s " % static_path +
                          "--email %s -q --agree-tos -d %s" %
-                         (cfg.CONF.letsencrypt.email, self._domain_name)) == 0
+                         (action, cfg.CONF.letsencrypt.email,
+                          self._domain_name)) == 0
+
+
 
     @staticmethod
     def _ctl(action='reload'):
