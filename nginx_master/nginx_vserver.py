@@ -106,7 +106,7 @@ class NginxVirtualServer:
     @staticmethod
     def _file_age_days(filename):
         mtime = datetime.datetime.fromtimestamp(os.path.getmtime(filename))
-        delta = datetime.now() - mtime
+        delta = datetime.datetime.now() - mtime
         return delta.days
 
     @property
