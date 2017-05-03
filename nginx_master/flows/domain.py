@@ -129,6 +129,7 @@ class DomainFlow(base.Flow):
 
     def renew_cert(self):
         if self.nginx_vserver.create_certificate(renew=True):
+            self.nginx_vserver.reload()
             self.next(self.wait_renewal)
         else:
             self.next(self.wait_renewal_retry)
