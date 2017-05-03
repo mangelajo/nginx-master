@@ -6,6 +6,10 @@
 import os
 import re
 
+from oslo_log import log as logging
+
+LOG = logging.getLogger(__name__)
+
 DKIM_KEY_CMD = "opendkim-genkey -b 2048 -h rsa-sha256 -r -s default -d %s"
 DKIM_KEYTABLE = "/etc/opendkim/KeyTable"
 DKIM_KEYTABLE_ENTRY = "default._domainkey.%(domain)s %(domain)s:default:" \
@@ -43,6 +47,7 @@ class DKIMKey(object):
         changed = (self._ensure_line(DKIM_SIGNINGTABLE, signing_entry) or
                    self._ensure_line(DKIM_KEYTABLE, keytable_entry))
         if changed:
+            LOG.info("opendkim configured for domain (%s)", self._domain)
             self.reload()
 
     @staticmethod
@@ -77,6 +82,7 @@ class DKIMKey(object):
     def _generate_key(self):
         build_cmd = DKIM_KEY_CMD % self._domain
         os.system("cd %s; %s" % (self.key_dir, build_cmd))
+        LOG.info('DKIM key generated for domain %s', self._domain)
 
     @property
     def dns_entry(self):
