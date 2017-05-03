@@ -128,9 +128,10 @@ class NginxVirtualServer:
 
         self._ensure_directory(static_path)
 
-        return os.system("certbot %s --webroot -w %s " % static_path +
+        return os.system("certbot %s --webroot -w %s " % (action,
+                                                          static_path) +
                          "--email %s -q --agree-tos -d %s" %
-                         (action, cfg.CONF.letsencrypt.email,
+                         (cfg.CONF.letsencrypt.email,
                           self._domain_name)) == 0
 
 
