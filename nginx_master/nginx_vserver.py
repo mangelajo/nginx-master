@@ -122,7 +122,8 @@ class NginxVirtualServer:
 
     def create_certificate(self, renew=False):
 
-        action = 'renew' if renew else 'certonly'
+        # action = 'renew' if renew else 'certonly'
+        action = 'certonly' # renew only works for "all certificates"
 
         static_path = "/var/www/%s" % self._domain_name
 
