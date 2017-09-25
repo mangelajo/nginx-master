@@ -24,6 +24,7 @@ class DomainFlow(base.Flow):
 
     def event_ip_changed(self, ip_address):
         self.ip_address = ip_address
+        LOG.info("**** IP address changed: %s", ip_address)
         self.next_on_wait(self.check_dns)
 
     def set_backends(self, backends):
@@ -37,7 +38,9 @@ class DomainFlow(base.Flow):
 
     @property
     def dns_reg_value(self):
-        return cfg.CONF.dns_reg_value.replace('$ip_address', self.ip_address)
+	ip_a = cfg.CONF.dns_reg_value
+	ip_a = ip_a.replace('IP_ADDRESS', self.ip_address)
+	return ip_a
 
     def check_dns(self):
         try:

@@ -7,11 +7,7 @@ import dns_manager
 
 common_options = [
     cfg.StrOpt('dns_reg_type', default=dns_manager.A),
-    cfg.StrOpt('dns_reg_value',
-               help='The value to use for the DNS settings, you can use '
-                    '$ip_address '
-                    'to fetch your external IP address via stun and keep it '
-                    'updated'),
+    cfg.StrOpt('dns_reg_value', default="IP_ADDRESS"),
     cfg.IntOpt('dns_reg_ttl', default=900, help='TTL for the record'),
     cfg.StrOpt('dns_spf', default="v=spf1 a:cpanel.optimizacionweb.es -all"),
     cfg.StrOpt('dns_mx', default="1 redirect.ovh.net."),
