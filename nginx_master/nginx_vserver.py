@@ -129,11 +129,11 @@ class NginxVirtualServer:
 
         self._ensure_directory(static_path)
 
-        return os.system("certbot %s --webroot -w %s " % (action,
-                                                          static_path) +
-                         "--email %s -q --agree-tos -d %s" %
-                         (cfg.CONF.letsencrypt.email,
-                          self._domain_name)) == 0
+        cmdline = "certbot %s --webroot -w %s " % (action, static_path) + \
+                  "--email %s -q --agree-tos -d %s" % (cfg.CONF.letsencrypt.email,
+                                                       self._domain_name)
+        LOG.info("create_certificate() %s", cmdline)
+        return os.system(cmdline) == 0
 
 
 
