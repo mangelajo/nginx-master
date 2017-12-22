@@ -49,7 +49,7 @@ def setup():
 
 def main_loop():
     global ip_address
-    client = etcd.Client(port=cfg.CONF.etcd.port)
+    client = etcd.Client(host=cfg.CONF.etcd.hostname, port=cfg.CONF.etcd.port)
     failed = {}
 
     update_ip_address_via_stun()
