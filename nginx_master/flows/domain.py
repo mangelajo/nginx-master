@@ -14,7 +14,16 @@ LOG = logging.getLogger(__name__)
 class DomainFlow(base.Flow):
     def __init__(self, domain_name, ip_address):
         super(DomainFlow, self).__init__(domain_name)
-        self.domain_name = domain_name
+
+        self.server_name = domain_name
+        d_parts = domain_name.split('.')
+        if len(d_parts) == 2:
+            self.domain_name = domain_name
+            self.subdomain = ""
+        else:
+            self.domain_name = '.'.join(d_parts[1:3])
+            self.subdomain = d_parts[0]
+
         self.next(self.write_config)
         self.backends = []
         self.nginx_vserver = NginxVirtualServer(domain_name, [])
@@ -66,34 +75,35 @@ class DomainFlow(base.Flow):
 
     def set_dns(self):
 
-        self.dns_api.set_record('',
+        self.dns_api.set_record(self.subdomain,
                                 cfg.CONF.dns_reg_type,
                                 self.dns_reg_value,
                                 cfg.CONF.dns_reg_ttl)
 
-        # setup the DKIM email signature key
-        dkim_key, dkim_type, dkim_value = self.dkim_key.dns_entry
-        self.dns_api.set_record(dkim_key, dkim_type, dkim_value)
+        if self.subdomain != "":
+            # setup the DKIM email signature key
+            dkim_key, dkim_type, dkim_value = self.dkim_key.dns_entry
+            self.dns_api.set_record(dkim_key, dkim_type, dkim_value)
 
-        # setup the MX entry if configured
-        if cfg.CONF.dns_mx:
-            self.dns_api.set_record('', dns_manager.MX, cfg.CONF.dns_mx)
+            # setup the MX entry if configured
+            if cfg.CONF.dns_mx:
+                self.dns_api.set_record('', dns_manager.MX, cfg.CONF.dns_mx)
 
-        # setup the SPF entry if configured
-        if cfg.CONF.dns_spf:
-            self.dns_api.set_record('', dns_manager.SPF,
-                                    cfg.CONF.dns_spf,
-                                    cfg.CONF.dns_spf_ttl)
-        # setup the DMARC entry if configured
-        if cfg.CONF.dns_dmarc:
-            self.dns_api.set_record('_dmarc', dns_manager.TXT,
-                                    cfg.CONF.dns_dmarc)
+            # setup the SPF entry if configured
+            if cfg.CONF.dns_spf:
+                self.dns_api.set_record('', dns_manager.SPF,
+                                        cfg.CONF.dns_spf,
+                                        cfg.CONF.dns_spf_ttl)
+            # setup the DMARC entry if configured
+            if cfg.CONF.dns_dmarc:
+                self.dns_api.set_record('_dmarc', dns_manager.TXT,
+                                        cfg.CONF.dns_dmarc)
 
         self.next(self.wait_dns)
 
     def wait_dns(self):
         try:
-            values = dns_manager.resolve(self.domain_name, cfg.CONF.dns_reg_type)
+            values = dns_manager.resolve(self.server_name, cfg.CONF.dns_reg_type)
             if len(values) == 1 and str(values[0]) == self.dns_reg_value:
                 LOG.info("DNS for %s is correctly set", self.domain_name)
                 if not self.nginx_vserver.has_cert:
