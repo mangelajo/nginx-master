@@ -10,7 +10,7 @@ common_options = [
     cfg.StrOpt('dns_reg_value', default="IP_ADDRESS"),
     cfg.IntOpt('dns_reg_ttl', default=900, help='TTL for the record'),
     cfg.StrOpt('dns_spf', default="v=spf1 a:cpanel.optimizacionweb.es -all"),
-    cfg.StrOpt('dns_mx', default="1 redirect.ovh.net."),
+    cfg.StrOpt('dns_mx', default="300 redirect.ovh.net."),
     cfg.IntOpt('dns_spf_ttl', default=900, help='TTL for the SPF record'),
     cfg.IntOpt('loop_interval', default=5, help='Interval between loops'),
     cfg.StrOpt('dns_dmarc', default="v=DMARC1;p=reject;pct=100;"
