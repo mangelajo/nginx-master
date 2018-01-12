@@ -25,19 +25,24 @@ def update_ip_address_via_stun():
 
     if now - _last_ip_address_check < cfg.CONF.stun.check_interval:
         return False
+    try:
+        if cfg.CONF.stun.host:
+            LOG.debug("Checking external IP address with stun server")
+            _, ext_ip, _ = stun.get_ip_info(stun_host=cfg.CONF.stun.host,
+                                            stun_port=cfg.CONF.stun.port)
+            _last_ip_address_check = now
 
-    if cfg.CONF.stun.host:
-        LOG.debug("Checking external IP address with stun server")
-        _, ext_ip, _ = stun.get_ip_info(stun_host=cfg.CONF.stun.host,
-                                        stun_port=cfg.CONF.stun.port)
-        _last_ip_address_check = now
+        if not ext_ip:
+            return False
 
-    if not ext_ip:
+        changed = ip_address != ext_ip
+        ip_address = ext_ip
+        return changed
+    except Exception:
+        import traceback
+        LOG.error("An unexpected exception happened when trying to update ip "
+                  "address info via stun:\n%s", traceback.format_exc())
         return False
-
-    changed = ip_address != ext_ip
-    ip_address = ext_ip
-    return changed
 
 
 def setup():
