@@ -1,4 +1,7 @@
 #!/usr/bin/python
+import random
+import time
+
 from dns import resolver
 from oslo_config import cfg
 from oslo_log import log as logging
@@ -24,7 +27,7 @@ class DomainFlow(base.Flow):
             self.domain_name = '.'.join(d_parts[1:3])
             self.subdomain = d_parts[0]
 
-        self.next(self.write_config)
+        self.next(self.initial_delay)
         self.backends = []
         self.nginx_vserver = NginxVirtualServer(domain_name, [])
         self.dkim_key = postfix.DKIMKey(domain_name)
@@ -40,6 +43,12 @@ class DomainFlow(base.Flow):
         self.backends = backends
         self.nginx_vserver.set_backends(backends)
         self.nginx_vserver.write_config()
+
+    def initial_delay(self):
+        delay = random.randint(5, 60)
+        LOG.info("Starting delay for %s of %d seconds", self.server_name, delay)
+        time.sleep(delay)
+        self.next(self.write_config)
 
     def write_config(self):
         self.nginx_vserver.write_config()
